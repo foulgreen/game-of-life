@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "test_data.h"
 
 int process_frame(char ***input, int height, int width)
 {
@@ -82,7 +81,7 @@ int process_frame(char ***input, int height, int width)
 	return 0;
 }
 
-void debug_print(char **f, int height, int width)
+static void debug_print(char **f, int height, int width)
 {
 	for(int i = 0; i < height; ++i) {
 		for(int j = 0; j < width; ++j) {
@@ -93,19 +92,25 @@ void debug_print(char **f, int height, int width)
 	fflush(stdout);
 }
 
-int main(void)
+void clear_frame(char ***f, int height, int width)
 {
-	char **a;
-	for(int i = 0; i < 20; ++i) {
-		a[i] = a_frame[i];
-	}
-	debug_print(a, 20, 20);
-	process_frame(&a, 20, 20);
-	debug_print(a, 20, 20);
-	process_frame(&a, 20, 20);
-	debug_print(a, 20, 20);
-	process_frame(&a, 20, 20);
-	debug_print(a, 20, 20);
-	process_frame(&a, 20, 20);
+	for(int i = 0; i < height; ++i)
+		for(int j = 0; j < width; ++j)
+			(*f)[i][j] = '.';
+}
 
+void copy_frame(char ***dest, char **src, int height, int width)
+{
+	for(int i = 0; i < height; ++i)
+		for(int j = 0; j < width; ++j)
+			(*dest)[i][j] = src[i][j];
+}
+
+int cmp_frame(char **f1, char **f2, int height, int width)
+{
+	for(int i = 0; i < height; ++i)
+		for(int j = 0; j < width; ++j)
+			if(f1[i][j] != f2[i][j])
+				return 1;
+	return 0;
 }
