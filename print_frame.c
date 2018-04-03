@@ -1,12 +1,11 @@
 # include "stdio.h"
-# include "test_data.h"
-int main ()
+int print_frame (char **frame, int height, int width)
     {
-        int x = 401;
+        int x = height*width+1;
         //printf("%lu\n", sizeof(a_frame));
         while(x >= 0)
         {
-            printf ("%c", a_frame[0][x]);
+            printf ("%c", frame[0][x]);
             if(x %20 == 0)
                 {
                     printf("\n");
