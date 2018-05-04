@@ -1,9 +1,8 @@
 # include "stdio.h"
-# include "test_data.h"
-int main ()
+int print_frame (char **a_frame, int height, int width)
     {
-        int x = 0;
-        int y = 0;
+        int x = width;
+        int y = height;
         
         //printf("%lu\n", sizeof(a_frame));
         
@@ -30,4 +29,4 @@ int main ()
             x++;
         }
     return 0;
-    };
+    }
