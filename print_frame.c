@@ -1,4 +1,5 @@
 # include "stdio.h"
+/* prints the state of the game of life grid given in a_frame */
 int print_frame (char **a_frame, int height, int width)
     {
         int x = width;
