@@ -1,6 +1,6 @@
-# include "stdio.h"
+# include <stdio.h>
 /* prints the state of the game of life grid given in a_frame */
-int print_frame (char **a_frame, int height, int width)
+int print_frame (FILE *output_frame,char **a_frame, int height, int width)
     {
         int x = width;
         int y = height;
@@ -14,7 +14,7 @@ int print_frame (char **a_frame, int height, int width)
             {
                 printf("\n");
             };
-            printf("%c", a_frame[y][x]);
+            fprintf (output_frame, "%c", a_frame[y][x]);
             y++;
         }
             
@@ -26,7 +26,7 @@ int print_frame (char **a_frame, int height, int width)
                     printf("\n");
                 }    
             
-            printf ("%c", a_frame[y][x]);
+            fprintf (output_frame, "%c", a_frame[y][x]);
             x++;
         }
     return 0;
