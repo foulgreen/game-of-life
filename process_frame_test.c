@@ -162,7 +162,7 @@ int tests_run;
 int main(int argc, char *argv[])
 {
 	if(argc < 2)
-		random_seed = get_seed_posix();
+		random_seed = get_seed();
 	else
 		random_seed = atoll(argv[1]);
 	printf("Using seed: %llu\n", random_seed);
