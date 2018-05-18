@@ -1,71 +1,172 @@
 #include "process_frame.h"
 #include "minunit.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
+#include <unistd.h>
+
+unsigned int random_seed;
+
+char **alloc_array(int x, int y)
+{
+	char **ret = malloc(y * sizeof(&ret));
+	for(int i = 0; i < y; ++i) {
+		ret[i] = malloc(x * sizeof(&ret[0]));
+	}
+	return ret;
+}
+
+void free_array(char ***a, int x, int y)
+{
+	for(int i = 0; i < y; ++i) {
+		free(a[i]);
+		a[i] = 0;
+	}
+	free(a);
+	a = 0;
+}
+
+unsigned int get_seed(void)
+{
+	FILE *f = fopen("/dev/urandom", "r");
+	if(!f) {
+
+		fprintf(stderr, "couldn't find /dev/urandom using time() to init random number generator\n");
+		return time(NULL);
+	}
+	unsigned int out;
+	fread(&out, sizeof(out), 1, f);
+	if(ferror(f))
+		return 0;
+	fclose(f);
+	return out;
+}
 
 int abs(int x) { return x > 0 ? x : -x; }
 
 /*
- * take 2 point (x,y) (u,v)
- * find out what the final state should be
- * return true if final state aligns with game rules
- *
- * Note:
- * When measuring the response for 2 points, there are only 2 outcomes.
- * Cells will either all die or all live.
+ * Hand verified for all edge cases
+ * TODO: is this the right way to do this?
  */
-char *test_2points_5x5(int x, int y, int u, int v)
+int test_process_frame(char ***input, int height, int width)
 {
-	int x_dist = abs(x - u);
-	int y_dist = abs(y - v);
-	int all_live; /* also known as is_adjacent */
-	//TODO: is there a simplification for this
-	all_live  = (x_dist == 1) && (y_dist == 1); /* corner     */
-	all_live |= (x_dist == 1) && (y_dist == 0); /* left right */
-	all_live |= (x_dist == 0) && (y_dist == 1); /* up down    */
-	char in[5][5];
+	static int last_height = 0, last_width = 0;
+	static char **buf = NULL;
+	/* allocate and init **buf */
+	if((last_height != height) || (last_width != width)) {
+		free(buf);
+		int ptr_off = sizeof(*buf) * height;
+		char *buf_data = malloc(ptr_off + sizeof(*buf_data) * height * width);
+		buf = (char **)buf_data;
+		buf[0] = buf_data + ptr_off;
+		for(int i = 1; i < height; ++i) {
+			buf[i] = buf[i-1] + width;
+		}
+	}
+	/* copy input*/
+	for(int h = 0; h < height; ++h) {
+		for(int w = 0; w < width; ++w) {
+			buf[h][w] = (*input)[h][w];
+		}
+	}
+	//for each cell check every adjacent cell and decide what to do.
+	for(int h = 0; h < height; ++h) {
+		for(int w = 0; w < width; ++w) {
+			/* mask the edges to stay in bounds */
+			char mask = 0b00000000;
+			if(h == 0)
+				mask |= 0b11100000; /* top    */
+			if(h == height - 1)
+				mask |= 0b00000111; /* bottom */
+			if(w == 0)
+				mask |= 0b10010100; /* left   */
+			if(w == width - 1)
+				mask |= 0b00101001; /* right  */
+
+			int pop_sz = 0;
+			if(mask == 0) {
+				pop_sz += (buf[h - 1][w - 1] == '#');
+				pop_sz += (buf[h - 1][w    ] == '#');
+				pop_sz += (buf[h - 1][w + 1] == '#');
+				pop_sz += (buf[h    ][w - 1] == '#');
+				pop_sz += (buf[h    ][w + 1] == '#');
+				pop_sz += (buf[h + 1][w - 1] == '#');
+				pop_sz += (buf[h + 1][w    ] == '#');
+				pop_sz += (buf[h + 1][w + 1] == '#');
+			} else {
+				if(!(mask & 0b10000000))
+					pop_sz += (buf[h - 1][w - 1] == '#');
+				if(!(mask & 0b01000000))
+					pop_sz += (buf[h - 1][w    ] == '#');
+				if(!(mask & 0b00100000))
+					pop_sz += (buf[h - 1][w + 1] == '#');
+				if(!(mask & 0b00010000))
+					pop_sz += (buf[h    ][w - 1] == '#');
+				if(!(mask & 0b00001000))
+					pop_sz += (buf[h    ][w + 1] == '#');
+				if(!(mask & 0b00000100))
+					pop_sz += (buf[h + 1][w - 1] == '#');
+				if(!(mask & 0b00000010))
+					pop_sz += (buf[h + 1][w    ] == '#');
+				if(!(mask & 0b00000001))
+					pop_sz += (buf[h + 1][w + 1] == '#');
+			}
+
+			/* game rules */
+			switch(pop_sz) {
+			case 2:
+				break;
+			case 3:
+				(*input)[h][w] = '#';
+				break;
+			default:
+				(*input)[h][w] = '.';
+			}
+		}
+	}
+	return 0;
+}
+
+char const *test_5x5(void)
+{
+	printf("In test_5x5\n");
+
+	srand(random_seed);
+	char **in = alloc_array(5, 5);
 	clear_frame(&in, 5, 5);
-	if(x < 0 || x > 4 || y < 0 || x > 4) {
-		all_live = 0; /* (x,y) is outside array bounds */
-	} else {
-		in[y][x] = '#';
-	}
-	if(u < 0 || u > 4 || v < 0 || v > 4) {
-		all_live = 0; /* (u,v) is outside array bounds */
-	} else {
-		in[v][u] = '#';
-	}
-	char expect[5][5];
-	if(all_live)
-		copy_frame(&expect, in, 5, 5);
-	else /* all_die */
-		clear_frame(&expect, 5, 5);
-	process_frame(&in, 5, 5);
-	static char buf[64];
-	snprintf(buf, 64, "result for (%d,%d) and (%d,%d) is invalid",x ,y ,u ,v);
-	mu_assert(buf, cmp_frame(in, expect, 5, 5));
-	return 0;
-}
-
-char *test_2points_5x5(void)
-{
-	const char *err;
 	for(int y = 0; y < 5; ++y)
-		for(int x = 0; x < 5; ++x)
-			for(int v = 0; v < 5; ++v)
-				for(int u = 0; u < 5; ++u)
-					if((err = test_2points_5x5(x, y, u, v)))
-						return err;
+		for(int x = 0; x < 5; ++x) {
+			if(rand() > (RAND_MAX/2))
+				in[y][x] = '#';
+			else
+				in[y][x] = '.';
+		}
+	char **expect = alloc_array(5,5);
+	copy_frame(&expect, in, 5, 5);
+	test_process_frame(&expect, 5, 5);
+	process_frame(&in, 5, 5);
 
+	static char buf[64];
+	snprintf(buf, 64, "rip");
+	mu_assert(buf, !cmp_frame(in, expect, 5, 5));
 	return 0;
 }
-char *all_process_frame_tests(void)
+char const *all_process_frame_tests(void)
 {
-	mu_run_test(test_2points_5x5);
+	mu_run_test(test_5x5);
 	return 0;
 }
 
-int main(void)
+int tests_run;
+
+int main(int argc, char *argv[])
 {
-	char *result = all_process_frame_tests();
+	if(argc < 2)
+		random_seed = get_seed_posix();
+	else
+		random_seed = atoll(argv[1]);
+	printf("Using seed: %llu\n", random_seed);
+	char const *result = all_process_frame_tests();
 	if(result)
 		printf("%s\n", result);
 	else
