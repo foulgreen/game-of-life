@@ -1,2 +1,4 @@
 *.exe
-a.out
+*.o
+game
+process_frame_test
